@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Rendhagyó igék — Past Participle gyakorlat</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-sky-50 to-indigo-50 min-h-screen flex items-center justify-center p-4">
+  <div class="w-full max-w-2xl bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl p-8">
+    <header class="text-center mb-6">
+      <h1 class="text-3xl font-extrabold text-indigo-700">Rendhagyó igék — Past Participle gyakorlat</h1>
+      <p class="text-sm text-gray-600 mt-2">A jelenlegi ige megjelenik; válaszd ki a helyes <strong>past</strong> és <strong>past participle</strong> párost (4 lehetőség).</p>
+    </header>
+
+    <main id="gameArea" class="space-y-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-gray-500">Kérdés</p>
+          <p id="question" class="text-2xl font-bold text-indigo-800">Betöltés...</p>
+        </div>
+        <div class="text-right">
+          <p id="counter" class="text-sm text-gray-500">0 / 10</p>
+          <div class="w-48 bg-gray-200 rounded-full h-3 mt-2 overflow-hidden">
+            <div id="progress" class="h-3 bg-indigo-500 rounded-full transition-all" style="width:0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="options" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
+
+      <div id="feedback" class="h-12 flex items-center justify-center text-xl font-bold"></div>
+
+      <div class="flex justify-between items-center">
+        <button id="skipBtn" class="bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded-2xl border" disabled>Skip</button>
+        <button id="restart" class="bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-2xl hidden">Újrakezdés</button>
+      </div>
+    </main>
+
+    <section id="endArea" class="hidden mt-6 text-center space-y-4">
+      <h2 id="finalTitle" class="text-3xl font-extrabold text-indigo-700"></h2>
+      <p id="finalScore" class="text-lg text-gray-700"></p>
+      <button id="playAgain" class="bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-6 rounded-2xl">Játszd újra</button>
+    </section>
+  </div>
+
+  <script>
+    // List of verbs provided (base, past, past participle)
+    const allVerbs = [
+      { base: "feel", past: "felt", pp: "felt" },
+      { base: "fight", past: "fought", pp: "fought" },
+      { base: "find", past: "found", pp: "found" },
+      { base: "fly", past: "flew", pp: "flown" },
+      { base: "get", past: "got", pp: "got" },
+      { base: "give", past: "gave", pp: "given" },
+      { base: "go", past: "went", pp: "gone" },
+      { base: "grow", past: "grew", pp: "grown" },
+      { base: "have", past: "had", pp: "had" },
+      { base: "hear", past: "heard", pp: "heard" },
+      { base: "hide", past: "hid", pp: "hidden" },
+      { base: "hit", past: "hit", pp: "hit" },
+      { base: "hold", past: "held", pp: "held" },
+      { base: "hurt", past: "hurt", pp: "hurt" },
+      { base: "keep", past: "kept", pp: "kept" },
+      { base: "know", past: "knew", pp: "known" },
+      { base: "learn", past: "learnt", pp: "learnt" },
+      { base: "leave", past: "left", pp: "left" },
+      { base: "lie", past: "lay", pp: "lain" },
+      { base: "lose", past: "lost", pp: "lost" }
+    ];
+
+    // Game state
+    const TOTAL_QUESTIONS = 10;
+    let currentSet = [];
+    let currentIndex = 0;
+    let correctCount = 0;
+    let accepting = true;
+
+    // Helpers
+    function shuffle(arr) {
+      return arr.slice().sort(() => Math.random() - 0.5);
+    }
+
+    function pickRandomWrongPairs(correctPast, correctPP, count) {
+      // pick distinct wrong pairs (past + pp) from other verbs
+      const pool = allVerbs.filter(v => !(v.past === correctPast && v.pp === correctPP));
+      return shuffle(pool).slice(0, count).map(v => ({ past: v.past, pp: v.pp }));
+    }
+
+    // UI elements
+    const questionEl = document.getElementById("question");
+    const optionsEl = document.getElementById("options");
+    const feedbackEl = document.getElementById("feedback");
+    const progressEl = document.getElementById("progress");
+    const counterEl = document.getElementById("counter");
+    const endArea = document.getElementById("endArea");
+    const finalTitle = document.getElementById("finalTitle");
+    const finalScore = document.getElementById("finalScore");
+    const playAgainBtn = document.getElementById("playAgain");
+    const restartBtn = document.getElementById("restart");
+
+    // Start a new game
+    function startGame() {
+      // choose 10 random verbs from list
+      currentSet = shuffle(allVerbs).slice(0, TOTAL_QUESTIONS);
+      currentIndex = 0;
+      correctCount = 0;
+      accepting = true;
+      endArea.classList.add("hidden");
+      document.getElementById("gameArea").classList.remove("opacity-40");
+      restartBtn.classList.add("hidden");
+      feedbackEl.textContent = "";
+      renderQuestion();
+    }
+
+    function renderQuestion() {
+      accepting = true;
+      optionsEl.innerHTML = "";
+      feedbackEl.textContent = "";
+      const v = currentSet[currentIndex];
+      questionEl.textContent = `Mi a(z) "${v.base}" past és past participle párosa?`;
+      counterEl.textContent = `${currentIndex + 1} / ${TOTAL_QUESTIONS}`;
+      progressEl.style.width = `${(currentIndex / TOTAL_QUESTIONS) * 100}%`;
+
+      // prepare options: 1 correct (past + pp), 3 wrong pairs
+      const wrongPairs = pickRandomWrongPairs(v.past, v.pp, 3);
+      const options = shuffle([{ past: v.past, pp: v.pp, correct: true }, 
+                               ...wrongPairs.map(w => ({ past: w.past, pp: w.pp, correct: false }))]);
+
+      options.forEach(opt => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        // display as "past — past participle"
+        btn.innerHTML = `<span class="block text-lg font-semibold">${opt.past} — ${opt.pp}</span>`;
+        btn.className = "w-full text-left bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 py-3 px-4 rounded-xl transition shadow-sm";
+        btn.onclick = () => handleAnswer(btn, opt.correct);
+        optionsEl.appendChild(btn);
+      });
+    }
+
+    function handleAnswer(button, isCorrect) {
+      if (!accepting) return;
+      accepting = false;
+
+      // disable all buttons
+      const btns = optionsEl.querySelectorAll("button");
+      btns.forEach(b => b.disabled = true);
+
+      if (isCorrect) {
+        correctCount++;
+        feedbackEl.textContent = "Hell Yeah!";
+        feedbackEl.className = "h-12 flex items-center justify-center text-2xl font-extrabold text-green-600";
+        // mark chosen button green
+        button.classList.add("bg-green-100", "border-green-300");
+      } else {
+        feedbackEl.textContent = "Hell Nah!";
+        feedbackEl.className = "h-12 flex items-center justify-center text-2xl font-extrabold text-red-600";
+        button.classList.add("bg-red-100", "border-red-300");
+        // highlight the correct option
+        const all = Array.from(btns);
+        all.forEach(b => {
+          // if button contains the correct pair, mark it
+          const txt = b.textContent.trim();
+          const correctPair = `${currentSet[currentIndex].past} — ${currentSet[currentIndex].pp}`;
+          if (txt === correctPair) {
+            b.classList.add("bg-green-100", "border-green-300");
+          }
+        });
+      }
+
+      // after brief pause go to next question or end
+      setTimeout(() => {
+        currentIndex++;
+        if (currentIndex >= TOTAL_QUESTIONS) {
+          finishGame();
+        } else {
+          renderQuestion();
+        }
+      }, 900);
+    }
+
+    function finishGame() {
+      // show end area with message based on correctCount
+      document.getElementById("gameArea").classList.add("opacity-40");
+      endArea.classList.remove("hidden");
+      restartBtn.classList.remove("hidden");
+      progressEl.style.width = "100%";
+      finalScore.textContent = `Pontszám: ${correctCount} / ${TOTAL_QUESTIONS}`;
+
+      let msg = "";
+      if (correctCount === 10) msg = "Excellent!";
+      else if (correctCount >= 7) msg = "Satisfactory!";
+      else msg = "Unsatisfactory! Try again!";
+      finalTitle.textContent = msg;
+    }
+
+    playAgainBtn.addEventListener("click", () => {
+      startGame();
+      endArea.classList.add("hidden");
+      document.getElementById("gameArea").classList.remove("opacity-40");
+    });
+
+    restartBtn.addEventListener("click", () => startGame());
+
+    // init
+    startGame();
+  </script>
+</body>
+</html>
